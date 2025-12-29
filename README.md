@@ -13,8 +13,10 @@
 
 ## Технологии
 - Python 3.11
-- Django
-- Django REST Framework
+- Django 4.2
+- Django REST Framework 3.16.1
+- bcrypt 4.1.2 (хеширование паролей)
+- PyJWT 2.8.0 (JWT токены для аутентификации)
 
 ## Статус
 Проект в активной разработке.
