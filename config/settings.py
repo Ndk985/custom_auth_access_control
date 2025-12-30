@@ -118,6 +118,9 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Custom User Model
+AUTH_USER_MODEL = 'users.User'
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
