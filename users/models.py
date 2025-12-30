@@ -65,6 +65,10 @@ class User(models.Model):
         verbose_name='Дата обновления'
     )
 
+    # Обязательные атрибуты для кастомной модели пользователя Django
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []  # Поля, требуемые при создании через createsuperuser
+
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
@@ -72,6 +76,21 @@ class User(models.Model):
         db_table = 'users_user'
 
     def __str__(self):
+        return self.email
+
+    @property
+    def is_authenticated(self):
+        """Всегда возвращает True для активных пользователей."""
+        return self.is_active
+
+    @property
+    def is_anonymous(self):
+        """Всегда возвращает False (не анонимный пользователь)."""
+        return False
+
+    @property
+    def username(self):
+        """Возвращает email как username для совместимости."""
         return self.email
 
     def set_password(self, raw_password):
