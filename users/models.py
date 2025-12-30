@@ -1,8 +1,40 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import BaseUserManager
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
+
+
+class UserManager(BaseUserManager):
+    """Кастомный менеджер для модели User."""
+
+    def create_user(self, email, password=None, **extra_fields):
+        """Создает и возвращает обычного пользователя."""
+        if not email:
+            raise ValueError('Email должен быть указан')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        if password:
+            user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        """Создает и возвращает суперпользователя."""
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Суперпользователь должен иметь is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Суперпользователь должен иметь is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
+    def get_by_natural_key(self, username):
+        """Получает пользователя по email (username)."""
+        return self.get(email=username)
 
 
 class User(models.Model):
@@ -48,6 +80,16 @@ class User(models.Model):
         help_text='Указывает, может ли пользователь войти в систему. '
                   'Используется для мягкого удаления.'
     )
+    is_staff = models.BooleanField(
+        default=False,
+        verbose_name='Персонал',
+        help_text='Указывает, может ли пользователь войти в админ-панель Django.'
+    )
+    is_superuser = models.BooleanField(
+        default=False,
+        verbose_name='Суперпользователь',
+        help_text='Указывает, что пользователь имеет все права без явного назначения.'
+    )
     role = models.ForeignKey(
         'access.Role',
         on_delete=models.PROTECT,
@@ -68,6 +110,8 @@ class User(models.Model):
     # Обязательные атрибуты для кастомной модели пользователя Django
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []  # Поля, требуемые при создании через createsuperuser
+
+    objects = UserManager()
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -145,3 +189,21 @@ class User(models.Model):
             algorithm='HS256'
         )
         return token
+
+    def has_perm(self, perm, obj=None):
+        """
+        Проверяет, имеет ли пользователь указанное разрешение.
+        Для суперпользователя всегда возвращает True.
+        """
+        if self.is_active and self.is_superuser:
+            return True
+        return False
+
+    def has_module_perms(self, app_label):
+        """
+        Проверяет, имеет ли пользователь разрешения для указанного приложения.
+        Для суперпользователя всегда возвращает True.
+        """
+        if self.is_active and self.is_superuser:
+            return True
+        return False
