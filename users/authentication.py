@@ -1,8 +1,11 @@
 """
-Кастомный authentication backend для работы с bcrypt паролями.
+Кастомные authentication backends для работы с bcrypt паролями и JWT токенами.
 """
 from django.contrib.auth.backends import BaseBackend
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 from .models import User
+from .utils import extract_token_from_header, get_user_from_token
 
 
 class BcryptAuthenticationBackend(BaseBackend):
@@ -54,4 +57,53 @@ class BcryptAuthenticationBackend(BaseBackend):
             return User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return None
+
+
+class JWTAuthentication(BaseAuthentication):
+    """
+    Authentication класс для Django REST Framework, использующий JWT токены.
+
+    Извлекает токен из заголовка Authorization: Bearer {token}
+    и устанавливает request.user для аутентифицированных пользователей.
+    """
+
+    def authenticate(self, request):
+        """
+        Аутентифицирует пользователя по JWT токену из заголовка.
+
+        Args:
+            request: HTTP запрос
+
+        Returns:
+            tuple: (user, token) если аутентификация успешна, None в противном случае
+
+        Raises:
+            AuthenticationFailed: Если токен невалиден или истек
+        """
+        authorization_header = request.META.get('HTTP_AUTHORIZATION', '')
+
+        if not authorization_header:
+            return None
+
+        token = extract_token_from_header(authorization_header)
+        if not token:
+            return None
+
+        user = get_user_from_token(token)
+        if not user:
+            raise AuthenticationFailed('Невалидный или истекший токен')
+
+        return (user, token)
+
+    def authenticate_header(self, request):
+        """
+        Возвращает значение заголовка WWW-Authenticate для 401 ответа.
+
+        Args:
+            request: HTTP запрос
+
+        Returns:
+            str: Значение заголовка
+        """
+        return 'Bearer'
 
