@@ -3,7 +3,6 @@
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .utils import generate_jwt_token
 
 User = get_user_model()
 
@@ -67,6 +66,50 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserLoginSerializer(serializers.Serializer):
+    """Сериализатор для входа в систему."""
+    email = serializers.EmailField(
+        required=True,
+        help_text='Email пользователя'
+    )
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Пароль пользователя'
+    )
+
+    def validate(self, attrs):
+        """Проверяет email и пароль."""
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if not email or not password:
+            raise serializers.ValidationError(
+                'Email и пароль обязательны для заполнения.'
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                'Неверный email или пароль.'
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                'Аккаунт пользователя деактивирован.'
+            )
+
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                'Неверный email или пароль.'
+            )
+
+        attrs['user'] = user
+        return attrs
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для отображения профиля пользователя."""
     role_name = serializers.CharField(
@@ -80,7 +123,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'id', 'email', 'first_name', 'last_name', 'middle_name',
             'is_active', 'role', 'role_name', 'created_at', 'updated_at'
         )
-        read_only_fields = ('id', 'email', 'is_active', 'created_at', 'updated_at')
+        read_only_fields = (
+            'id', 'email', 'is_active', 'created_at', 'updated_at'
+        )
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
