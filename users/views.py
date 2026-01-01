@@ -99,3 +99,110 @@ class UserLoginView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
+class UserProfileView(APIView):
+    """
+    API endpoint для работы с профилем пользователя.
+
+    GET /api/users/profile/ - получение профиля текущего пользователя
+    PUT/PATCH /api/users/profile/ - обновление профиля
+    DELETE /api/users/profile/ - мягкое удаление аккаунта
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Возвращает профиль текущего пользователя."""
+        user = request.user
+        serializer = UserProfileSerializer(user)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def put(self, request):
+        """Полное обновление профиля пользователя."""
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            # Возвращаем обновленные данные через UserProfileSerializer
+            user_data = UserProfileSerializer(user).data
+            return Response(
+                {
+                    'user': user_data,
+                    'message': 'Профиль успешно обновлен'
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def patch(self, request):
+        """Частичное обновление профиля пользователя."""
+        user = request.user
+        serializer = UserProfileUpdateSerializer(
+            user,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            # Возвращаем обновленные данные через UserProfileSerializer
+            user_data = UserProfileSerializer(user).data
+            return Response(
+                {
+                    'user': user_data,
+                    'message': 'Профиль успешно обновлен'
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def delete(self, request):
+        """Мягкое удаление аккаунта пользователя."""
+        user = request.user
+
+        # Мягкое удаление: устанавливаем is_active=False
+        user.is_active = False
+        user.save()
+
+        return Response(
+            {
+                'message': 'Аккаунт успешно удален. Вы больше не можете войти в систему.'
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class UserLogoutView(APIView):
+    """
+    API endpoint для выхода из системы.
+
+    POST /api/users/logout/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Выход из системы.
+
+        В текущей реализации JWT токены stateless, поэтому просто
+        возвращаем успешный ответ. Клиент должен удалить токен на своей стороне.
+        В будущем можно добавить blacklist токенов.
+        """
+        return Response(
+            {
+                'message': 'Успешный выход из системы'
+            },
+            status=status.HTTP_200_OK
+        )
+
