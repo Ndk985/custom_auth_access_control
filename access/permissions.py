@@ -225,3 +225,34 @@ class CanDeleteElement(HasElementPermission):
 
         return True
 
+
+class IsAdminRole(permissions.BasePermission):
+    """
+    Permission class для проверки, что пользователь имеет роль 'admin'.
+    """
+    def has_permission(self, request, view):
+        """
+        Проверяет, что пользователь аутентифицирован и имеет роль 'admin'.
+
+        Args:
+            request: HTTP запрос
+            view: View, для которого проверяется доступ
+
+        Returns:
+            bool: True если пользователь имеет роль admin, False в противном случае
+        """
+        if not request.user or not request.user.is_authenticated:
+            raise UnauthorizedError()
+
+        # Проверяем, что у пользователя есть роль
+        if not hasattr(request.user, 'role') or not request.user.role:
+            raise ForbiddenError('У пользователя не назначена роль.')
+
+        # Проверяем, что роль - admin
+        if request.user.role.name != 'admin':
+            raise ForbiddenError(
+                'Доступ разрешен только администраторам.'
+            )
+
+        return True
+
