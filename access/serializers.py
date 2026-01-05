@@ -155,3 +155,59 @@ class RoleCreateUpdateSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class BusinessElementSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для отображения бизнес-элемента.
+    """
+    rules_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BusinessElement
+        fields = (
+            'id',
+            'name',
+            'description',
+            'rules_count',
+            'created_at',
+            'updated_at'
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at', 'rules_count')
+
+    def get_rules_count(self, obj):
+        """Возвращает количество правил доступа для этого элемента."""
+        return obj.access_rules.count()
+
+
+class BusinessElementCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания и обновления бизнес-элемента.
+    """
+    class Meta:
+        model = BusinessElement
+        fields = (
+            'id',
+            'name',
+            'description'
+        )
+        read_only_fields = ('id',)
+
+    def validate_name(self, value):
+        """Проверяет уникальность имени элемента."""
+        instance = self.instance
+        if instance:
+            # При обновлении исключаем текущий объект
+            existing_element = BusinessElement.objects.filter(
+                name=value
+            ).exclude(pk=instance.pk).first()
+        else:
+            # При создании проверяем все элементы
+            existing_element = BusinessElement.objects.filter(name=value).first()
+
+        if existing_element:
+            raise serializers.ValidationError(
+                'Бизнес-элемент с таким именем уже существует.'
+            )
+
+        return value

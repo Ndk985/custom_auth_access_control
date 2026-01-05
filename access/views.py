@@ -5,12 +5,14 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import AccessRule, Role
+from .models import AccessRule, Role, BusinessElement
 from .serializers import (
     AccessRuleSerializer,
     AccessRuleCreateUpdateSerializer,
     RoleSerializer,
-    RoleCreateUpdateSerializer
+    RoleCreateUpdateSerializer,
+    BusinessElementSerializer,
+    BusinessElementCreateUpdateSerializer
 )
 from .permissions import IsAdminRole
 
@@ -316,5 +318,166 @@ class RoleViewSet(viewsets.ModelViewSet):
         except Role.DoesNotExist:
             return Response(
                 {'detail': 'Роль не найдена.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class BusinessElementViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для управления бизнес-элементами.
+
+    Доступ разрешен только пользователям с ролью 'admin'.
+    """
+    queryset = BusinessElement.objects.prefetch_related('access_rules').all()
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get_serializer_class(self):
+        """
+        Возвращает класс сериализатора в зависимости от действия.
+        """
+        if self.action in ('create', 'update', 'partial_update'):
+            return BusinessElementCreateUpdateSerializer
+        return BusinessElementSerializer
+
+    def list(self, request):
+        """
+        GET /api/access/elements/
+        Возвращает список всех бизнес-элементов.
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None):
+        """
+        GET /api/access/elements/{id}/
+        Возвращает детали конкретного бизнес-элемента.
+        """
+        try:
+            element = self.get_object()
+            serializer = self.get_serializer(element)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except BusinessElement.DoesNotExist:
+            return Response(
+                {'detail': 'Бизнес-элемент не найден.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def create(self, request):
+        """
+        POST /api/access/elements/
+        Создает новый бизнес-элемент.
+        """
+        serializer = BusinessElementCreateUpdateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            element = serializer.save()
+            # Возвращаем созданный элемент через BusinessElementSerializer
+            response_serializer = BusinessElementSerializer(element)
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def update(self, request, pk=None):
+        """
+        PUT /api/access/elements/{id}/
+        Полное обновление бизнес-элемента.
+        """
+        try:
+            element = self.get_object()
+            serializer = BusinessElementCreateUpdateSerializer(
+                element,
+                data=request.data
+            )
+
+            if serializer.is_valid():
+                serializer.save()
+                # Возвращаем обновленный элемент через BusinessElementSerializer
+                response_serializer = BusinessElementSerializer(element)
+                return Response(
+                    response_serializer.data,
+                    status=status.HTTP_200_OK
+                )
+
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except BusinessElement.DoesNotExist:
+            return Response(
+                {'detail': 'Бизнес-элемент не найден.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def partial_update(self, request, pk=None):
+        """
+        PATCH /api/access/elements/{id}/
+        Частичное обновление бизнес-элемента.
+        """
+        try:
+            element = self.get_object()
+            serializer = BusinessElementCreateUpdateSerializer(
+                element,
+                data=request.data,
+                partial=True
+            )
+
+            if serializer.is_valid():
+                serializer.save()
+                # Возвращаем обновленный элемент через BusinessElementSerializer
+                response_serializer = BusinessElementSerializer(element)
+                return Response(
+                    response_serializer.data,
+                    status=status.HTTP_200_OK
+                )
+
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except BusinessElement.DoesNotExist:
+            return Response(
+                {'detail': 'Бизнес-элемент не найден.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def destroy(self, request, pk=None):
+        """
+        DELETE /api/access/elements/{id}/
+        Удаляет бизнес-элемент.
+
+        Примечание: Элемент нельзя удалить, если есть правила доступа для него
+        (защита через CASCADE в модели AccessRule - правила удалятся автоматически).
+        """
+        try:
+            element = self.get_object()
+            # Проверяем, есть ли правила доступа для этого элемента
+            rules_count = element.access_rules.count()
+            if rules_count > 0:
+                return Response(
+                    {
+                        'detail': (
+                            f'Невозможно удалить бизнес-элемент. '
+                            f'Существует {rules_count} правил(а) доступа '
+                            f'для этого элемента. Сначала удалите правила доступа.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            element.delete()
+            return Response(
+                {'message': 'Бизнес-элемент успешно удален.'},
+                status=status.HTTP_200_OK
+            )
+        except BusinessElement.DoesNotExist:
+            return Response(
+                {'detail': 'Бизнес-элемент не найден.'},
                 status=status.HTTP_404_NOT_FOUND
             )
