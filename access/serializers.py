@@ -100,3 +100,58 @@ class AccessRuleCreateUpdateSerializer(serializers.ModelSerializer):
 
         return attrs
 
+
+class RoleSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для отображения роли.
+    """
+    users_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Role
+        fields = (
+            'id',
+            'name',
+            'description',
+            'users_count',
+            'created_at',
+            'updated_at'
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at', 'users_count')
+
+    def get_users_count(self, obj):
+        """Возвращает количество пользователей с этой ролью."""
+        return obj.users.count()
+
+
+class RoleCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания и обновления роли.
+    """
+    class Meta:
+        model = Role
+        fields = (
+            'id',
+            'name',
+            'description'
+        )
+        read_only_fields = ('id',)
+
+    def validate_name(self, value):
+        """Проверяет уникальность имени роли."""
+        instance = self.instance
+        if instance:
+            # При обновлении исключаем текущий объект
+            existing_role = Role.objects.filter(
+                name=value
+            ).exclude(pk=instance.pk).first()
+        else:
+            # При создании проверяем все роли
+            existing_role = Role.objects.filter(name=value).first()
+
+        if existing_role:
+            raise serializers.ValidationError(
+                'Роль с таким именем уже существует.'
+            )
+
+        return value
