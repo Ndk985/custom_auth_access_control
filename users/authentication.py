@@ -1,11 +1,14 @@
 """
 Кастомные authentication backends для работы с bcrypt паролями и JWT токенами.
 """
+import logging
 from django.contrib.auth.backends import BaseBackend
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from .models import User
 from .utils import extract_token_from_header, get_user_from_token
+
+logger = logging.getLogger('users.authentication')
 
 
 class BcryptAuthenticationBackend(BaseBackend):
@@ -36,11 +39,16 @@ class BcryptAuthenticationBackend(BaseBackend):
             return None
 
         if not user.is_active:
+            logger.warning(
+                f'Попытка входа неактивного пользователя: {username}'
+            )
             return None
 
         if user.check_password(password):
+            logger.info(f'Успешная аутентификация пользователя: {username}')
             return user
 
+        logger.warning(f'Неуспешная попытка входа: {username}')
         return None
 
     def get_user(self, user_id):
@@ -91,8 +99,10 @@ class JWTAuthentication(BaseAuthentication):
 
         user = get_user_from_token(token)
         if not user:
+            logger.warning('Попытка аутентификации с невалидным или истекшим токеном')
             raise AuthenticationFailed('Невалидный или истекший токен')
 
+        logger.info(f'Успешная JWT аутентификация пользователя: {user.email}')
         return (user, token)
 
     def authenticate_header(self, request):
@@ -106,4 +116,3 @@ class JWTAuthentication(BaseAuthentication):
             str: Значение заголовка
         """
         return 'Bearer'
-

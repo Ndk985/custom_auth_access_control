@@ -1,10 +1,13 @@
 """
 API views для работы с правилами доступа.
 """
+import logging
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+logger = logging.getLogger('access.views')
 from .models import AccessRule, Role, BusinessElement
 from .serializers import (
     AccessRuleSerializer,
@@ -93,6 +96,11 @@ class AccessRuleViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлено правило доступа ID {access_rule.id}: '
+                    f'роль {access_rule.role.name}, элемент {access_rule.element.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленное правило через AccessRuleSerializer
                 response_serializer = AccessRuleSerializer(access_rule)
                 return Response(
@@ -125,6 +133,11 @@ class AccessRuleViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлено правило доступа ID {access_rule.id}: '
+                    f'роль {access_rule.role.name}, элемент {access_rule.element.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленное правило через AccessRuleSerializer
                 response_serializer = AccessRuleSerializer(access_rule)
                 return Response(
@@ -149,7 +162,15 @@ class AccessRuleViewSet(viewsets.ModelViewSet):
         """
         try:
             access_rule = self.get_object()
+            rule_id = access_rule.id
+            role_name = access_rule.role.name
+            element_name = access_rule.element.name
             access_rule.delete()
+            logger.info(
+                f'Удалено правило доступа ID {rule_id}: '
+                f'роль {role_name}, элемент {element_name}, '
+                f'пользователь {request.user.email}'
+            )
             return Response(
                 {'message': 'Правило доступа успешно удалено.'},
                 status=status.HTTP_200_OK
@@ -211,6 +232,9 @@ class RoleViewSet(viewsets.ModelViewSet):
 
         if serializer.is_valid():
             role = serializer.save()
+            logger.info(
+                f'Создана роль: {role.name}, пользователь {request.user.email}'
+            )
             # Возвращаем созданную роль через RoleSerializer
             response_serializer = RoleSerializer(role)
             return Response(
@@ -237,6 +261,10 @@ class RoleViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлена роль ID {role.id}: {role.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленную роль через RoleSerializer
                 response_serializer = RoleSerializer(role)
                 return Response(
@@ -269,6 +297,10 @@ class RoleViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлена роль ID {role.id}: {role.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленную роль через RoleSerializer
                 response_serializer = RoleSerializer(role)
                 return Response(
@@ -310,7 +342,11 @@ class RoleViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            role_name = role.name
             role.delete()
+            logger.info(
+                f'Удалена роль: {role_name}, пользователь {request.user.email}'
+            )
             return Response(
                 {'message': 'Роль успешно удалена.'},
                 status=status.HTTP_200_OK
@@ -372,6 +408,10 @@ class BusinessElementViewSet(viewsets.ModelViewSet):
 
         if serializer.is_valid():
             element = serializer.save()
+            logger.info(
+                f'Создан бизнес-элемент: {element.name}, '
+                f'пользователь {request.user.email}'
+            )
             # Возвращаем созданный элемент через BusinessElementSerializer
             response_serializer = BusinessElementSerializer(element)
             return Response(
@@ -398,6 +438,10 @@ class BusinessElementViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлен бизнес-элемент ID {element.id}: {element.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленный элемент через BusinessElementSerializer
                 response_serializer = BusinessElementSerializer(element)
                 return Response(
@@ -430,6 +474,10 @@ class BusinessElementViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.info(
+                    f'Обновлен бизнес-элемент ID {element.id}: {element.name}, '
+                    f'пользователь {request.user.email}'
+                )
                 # Возвращаем обновленный элемент через BusinessElementSerializer
                 response_serializer = BusinessElementSerializer(element)
                 return Response(
@@ -471,7 +519,12 @@ class BusinessElementViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            element_name = element.name
             element.delete()
+            logger.info(
+                f'Удален бизнес-элемент: {element_name}, '
+                f'пользователь {request.user.email}'
+            )
             return Response(
                 {'message': 'Бизнес-элемент успешно удален.'},
                 status=status.HTTP_200_OK

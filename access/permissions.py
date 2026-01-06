@@ -1,9 +1,12 @@
 """
 Permission classes для проверки прав доступа к ресурсам.
 """
+import logging
 from rest_framework import permissions
 from .utils import check_permission
 from .exceptions import UnauthorizedError, ForbiddenError
+
+logger = logging.getLogger('access.permissions')
 
 
 class HasElementPermission(permissions.BasePermission):
@@ -26,6 +29,9 @@ class HasElementPermission(permissions.BasePermission):
         """
         # Проверяем аутентификацию
         if not request.user or not request.user.is_authenticated:
+            logger.warning(
+                f'Попытка доступа без аутентификации: {request.path}'
+            )
             raise UnauthorizedError()
 
         # Получаем название элемента из view
@@ -48,11 +54,19 @@ class HasElementPermission(permissions.BasePermission):
         )
 
         if not has_access:
+            logger.warning(
+                f'Отказ в доступе: пользователь {request.user.email}, '
+                f'элемент {element_name}, действие {action}, путь {request.path}'
+            )
             raise ForbiddenError(
                 f'У вас нет прав на выполнение действия "{action}" '
                 f'с элементом "{element_name}".'
             )
 
+        logger.info(
+            f'Доступ разрешен: пользователь {request.user.email}, '
+            f'элемент {element_name}, действие {action}'
+        )
         return True
 
     def has_object_permission(self, request, view, obj):
@@ -89,11 +103,20 @@ class HasElementPermission(permissions.BasePermission):
         )
 
         if not has_access:
+            logger.warning(
+                f'Отказ в доступе к объекту: пользователь {request.user.email}, '
+                f'элемент {element_name}, действие {action}, '
+                f'владелец ресурса: {resource_owner.email if resource_owner else None}'
+            )
             raise ForbiddenError(
                 f'У вас нет прав на выполнение действия "{action}" '
                 f'с этим ресурсом.'
             )
 
+        logger.info(
+            f'Доступ к объекту разрешен: пользователь {request.user.email}, '
+            f'элемент {element_name}, действие {action}'
+        )
         return True
 
     def _get_action_from_method(self, method: str) -> str:
