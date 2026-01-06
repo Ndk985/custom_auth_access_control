@@ -151,6 +151,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 # Logging configuration
+# Создаем директорию для логов, если её нет
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -174,8 +178,9 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'app.log',
+            'filename': LOGS_DIR / 'app.log',
             'formatter': 'verbose',
+            'encoding': 'utf-8',
         },
     },
     'root': {
